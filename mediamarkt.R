@@ -66,23 +66,39 @@ extract_product_data <- function(x) {
     product_prices_old <- read_page %>% html_nodes('.infobox') %>% html_node(".price-old") %>% html_text() %>% str_replace_all("[\r\n\t]", "") %>% as.numeric()
     product_prices_old <- product_prices_old[c(T, F)]
     
-    data <- data.frame(product_names = product_names,
-                       product_codes = product_codes,
-                       product_prices = product_prices,
-                       product_prices_old = product_prices_old,
-                       sale_flag = ifelse(((product_prices_old != "NA") & (product_prices_old != product_prices)),1,0))
+    if (length(product_names) == length(product_prices)) {
+      
+      data <- data.frame(product_names = product_names,
+                        product_codes = product_codes,
+                        product_prices = product_prices,
+                        product_prices_old = product_prices_old,
+                        sale_flag = ifelse(((product_prices_old != "NA") & (product_prices_old != product_prices)),1,0))
+      
+    }
     
   }
   
 }
 
-data <- rbindlist(pblapply(products_links[[1]], extract_product_data))
+data <- rbindlist(pblapply(products_links[1:300][[1]], extract_product_data))
+data <- data[!duplicated(data), ]
+
+data$sale_abs <- data$product_prices - data$product_prices_old
+data$sale_rel <- (data$product_prices - data$product_prices_old) / data$product_prices_old
+
 View(data)
 
-saveRDS(data, "data/data_products.RDS")
+saveRDS(data, "data/data_products.RDS") 
 
-# error
-#Error in data.frame(product_names = product_names, product_codes = product_codes,  : 
-  #                    arguments imply differing number of rows: 24, 23
+data %>% ggplot(aes(abs(sale_rel))) + geom_histogram(binwidth = 0.01) + theme_bw()
+data %>% group_by(sale_flag) %>% summarize(count = n()) %>% mutate(sale_flag = ifelse(is.na(sale_flag), 0, 1), count_pct = count / sum(count)) %>% 
+  ggplot(aes(sale_flag, count)) + 
+  geom_col() +
+  geom_text(aes(label = scales::percent(count_pct)), position = position_dodge(width = 1), vjust = -0.5) +
+  scale_x_continuous(breaks = c(0, 1)) +
+  theme_bw()
 
-# debug around 240-306
+# 0.3k out of 3k links read
+# connection may get aborted
+# need user agents
+# switch between them randomly to avoid being blocked
