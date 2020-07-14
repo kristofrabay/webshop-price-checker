@@ -1,0 +1,76 @@
+library(tidyverse)
+library(data.table)
+library(rvest)
+library(httr)
+library(stringr)
+library(pbapply)
+
+url <- "https://ingatlan.com/szukites/elado+lakas?page=1"
+
+# very interesting: simple rvest read_html: error 403 forbidden
+# when set uset_agent: reached target URL
+
+last_page <- 4275
+
+urls <- paste0("https://ingatlan.com/szukites/elado+lakas?page=", 1:last_page)
+
+data <- rbindlist(pblapply(urls, function(url) {
+
+                  page <- read_html(GET(url, add_headers('user-agent' = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36')))
+                  
+                  price <- page %>% html_nodes('.price') %>% html_text() %>% trimws() %>% str_extract('^[0-9]*.[0-9]*') %>% trimws() %>% as.double()
+                  price_sqm <- page %>% html_nodes('.price--sqm') %>% html_text() %>% str_remove('Ft/m2') %>% trimws() %>% str_remove('\\s')
+                  address <- page %>% html_nodes('.listing__address') %>% html_text() %>% trimws()
+                  area_size <- page %>% html_nodes('.listing__data--area-size') %>% html_text() %>% trimws() %>% str_extract('^[0-9]*.[0-9]*') %>% trimws() %>% as.double()
+                  room_count <- page %>% html_nodes('.listing__data--room-count') %>% html_text() %>% trimws()
+                  link <- page %>% html_nodes('.listing__card a') %>% html_attr('href')
+                  link <- paste0("https://ingatlan.com", link)
+                  link <- link[duplicated(link)]
+                  
+                  df <- data.frame("address" = address,
+                                   "price" = price,
+                                   "area_size" = area_size,
+                                   "price_sqm" = price_sqm,
+                                   "room_count" = room_count,
+                                   "link" = link)
+                  
+                  return(df)
+
+                  }))
+
+# 48 minutes to parse all ~85,000 ads
+
+View(data)
+saveRDS(data, "ads.RDS")
+write_csv(data, "ads.csv")
+
+# ERROR ADS:
+
+# 52214
+data[52214]
+# hiba? https://ingatlan.com/i-ker/elado+lakas/tegla-epitesu-lakas/budapest+1+kerulet+meszaros+utca+58/31011706
+
+# 31279
+data[31279]
+# hiba? https://ingatlan.com/miskolc/elado+lakas/tegla-epitesu-lakas/borsod-abauj-zemplen+megye+miskolc+miklos+utca/31382671
+
+
+# explore
+
+library(ggplot2)
+ggplot(data, aes(log(price))) + geom_histogram(bins = 100) + theme_bw()
+
+# 2 errors (links above)
+data <- data[price < exp(10),]
+ggplot(data, aes(price)) + geom_histogram(binwidth = 10) + theme_bw()
+
+# > 1000 million ( 1 billion ) HUF
+above_1_bn <- data[price > 1000,]
+saveRDS(above_1_bn, "ads_above_1_bn.RDS")
+write_csv(above_1_bn, "ads_above_1_bn.csv")
+
+data <- data[price < 1000,]
+saveRDS(data, "ads_normal.RDS")
+write_csv(data, "ads_normal.csv")
+ggplot(data, aes(price)) + geom_histogram(binwidth = 10) + theme_bw()
+data[price > 600,]
