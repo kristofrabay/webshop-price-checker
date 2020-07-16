@@ -84,7 +84,10 @@ extract_product_data <- function(link) {
   
   if (!identical(product_names, character(0))) {
     
-    product_categories <- page %>% html_nodes("h1") %>% html_text()
+    product_main_categories <- page %>% html_nodes(".home+ li a") %>% html_text()
+    product_secondary_categories <- page %>% html_nodes(".home~ li+ li a") %>% html_text()
+    product_secondary_categories <- ifelse(identical(product_secondary_categories, character(0)), NA, product_secondary_categories)
+    product_sub_categories <- page %>% html_nodes("h1") %>% html_text()
     product_codes <- page %>% html_nodes(".printonly") %>% html_text(trim = T) %>% str_remove_all("Cikkszám: ")
     product_prices <- page %>% html_nodes(".small") %>% html_text() %>% as.numeric()
     product_prices_old <- page %>% html_nodes('.infobox') %>% html_node(".price-old") %>% html_text() %>% str_replace_all("[\r\n\t]", "") %>% as.numeric()
@@ -93,7 +96,9 @@ extract_product_data <- function(link) {
     if (length(product_names) == length(product_prices)) {
       
       data <- data.frame(product_names = product_names,
-                         product_categories = product_categories,
+                         product_main_categories = product_main_categories,
+                         product_secondary_categories = product_secondary_categories,
+                         product_sub_categories = product_sub_categories,
                         product_codes = product_codes,
                         product_prices = product_prices,
                         product_prices_old = product_prices_old,
@@ -106,19 +111,12 @@ extract_product_data <- function(link) {
 }
 
 data <- rbindlist(pblapply(links[[1]], extract_product_data))
-data <- data[!duplicated(data), ]
+
+data <- distinct(data, product_codes, .keep_all = TRUE)
 
 data$sale_abs <- data$product_prices - data$product_prices_old
 data$sale_rel <- (data$product_prices - data$product_prices_old) / data$product_prices_old
 
-View(data)
+data$product_sub_categories <- trimws(str_replace(data$product_sub_categories, " \\(.*\\)", ""))
 
-saveRDS(data, "data/data_products_07_16.RDS") 
-
-data %>% ggplot(aes(abs(sale_rel))) + geom_histogram(binwidth = 0.01) + theme_bw()
-data %>% group_by(sale_flag) %>% summarize(count = n()) %>% mutate(sale_flag = ifelse(is.na(sale_flag), 0, 1), count_pct = count / sum(count)) %>% 
-  ggplot(aes(sale_flag, count)) + 
-  geom_col() +
-  geom_text(aes(label = scales::percent(count_pct)), position = position_dodge(width = 1), vjust = -0.5) +
-  scale_x_continuous(breaks = c(0, 1)) +
-  theme_bw()
+saveRDS(data, paste0("data/data_products_", Sys.Date(), ".RDS")) 
