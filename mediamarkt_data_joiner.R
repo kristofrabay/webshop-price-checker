@@ -26,3 +26,4 @@ names(data)[6] <- paste0('price_old_', Sys.Date())
 mf <- merge(mf, data, by = c("product_codes", "product_names", "product_main_categories", "product_sub_categories"), all.x = T)
 
 saveRDS(mf, "data/masterfile.RDS")
+
