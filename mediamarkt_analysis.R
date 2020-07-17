@@ -24,7 +24,7 @@ ggsave(paste0("charts/", Sys.Date(), "/on_sale.png"))
 data %>% group_by(product_main_categories, sale_flag) %>% summarize(count = n()) %>% mutate(sale_flag = ifelse(is.na(sale_flag), 0, 1), count_pct = count / sum(count)) %>% 
   ggplot(aes(sale_flag, count_pct)) + 
   geom_col() +
-  geom_text(aes(label = scales::percent(round(count_pct, digits = 3))), position = position_dodge(width = 1.5), vjust = -1/3) +
+  geom_text(aes(label = scales::percent(round(count_pct, digits = 4))), position = position_dodge(width = 1.5), vjust = -1/3) +
   scale_x_continuous(breaks = c(0, 1)) +
   scale_y_continuous(labels = percent_format(accuracy = 5L), breaks = seq(0, 1, 0.1), limits = c(0, 1)) +
   facet_wrap(~product_main_categories) +
