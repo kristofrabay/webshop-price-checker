@@ -120,3 +120,4 @@ data$sale_rel <- (data$product_prices - data$product_prices_old) / data$product_
 data$product_sub_categories <- trimws(str_replace(data$product_sub_categories, " \\(.*\\)", ""))
 
 saveRDS(data, paste0("data/data_products_", Sys.Date(), ".RDS")) 
+
