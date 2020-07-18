@@ -1,5 +1,7 @@
 library(tidyverse)
 library(data.table)
+library(matrixStats)
+
 
 # TODO joining method
 # 1. previous file containing all data scraped previously
@@ -26,6 +28,8 @@ names(data)[6] <- paste0('price_old_', Sys.Date())
 mf <- merge(mf, data, 
             by = c("product_codes", "product_names", "product_main_categories", "product_sub_categories"), 
             all = T) 
+
+View(mf)
 
 saveRDS(mf, "data/masterfile.RDS")
 
@@ -68,8 +72,17 @@ if (net_change >= 0) {
 
 ### any price change of a certain product?
 
+# from prev to current date
+
 price_change <- mf %>% 
   filter(!is.na(get(current_price_col)) & !is.na(get(previous_price_col))) %>% 
   filter(get(current_price_col) != get(previous_price_col))
-
 View(price_change)
+
+# price variance overall
+
+price_cols <- names(mf)[names(mf) %like% "price_current"]
+mf$price_var <- sqrt(rowVars(as.matrix(mf[, ..price_cols])))
+price_changes <- mf %>% filter(price_var != 0)
+View(price_changes)
+saveRDS(price_changes, "data/price_changes.RDS")
