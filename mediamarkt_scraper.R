@@ -30,7 +30,7 @@ saveRDS(sub_categories_links, "data/links_categories.RDS")
 rm(main_link, main_categories_link, sub_categories_links)
 
 
-### get links to subcategories
+### get links to products
 
 links <- readRDS("data/links_categories.RDS")
 
