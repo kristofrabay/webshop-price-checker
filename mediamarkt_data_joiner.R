@@ -38,7 +38,7 @@ saveRDS(mf, "data/masterfile.RDS")
 # TODO: prev won't necessarily be yesterday!
 
 current_price_col <- paste0('price_current_', Sys.Date())
-previous_price_col <- paste0('price_current_', Sys.Date() - 1)
+previous_price_col <- paste0('price_current_', Sys.Date() - 2)
 
 # products not available any more
 sold_out <- mf %>% 
